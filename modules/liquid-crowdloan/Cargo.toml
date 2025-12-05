@@ -10,6 +10,7 @@ parity-scale-codec = { workspace = true }
 
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
+frame-benchmarking = { workspace = true, optional = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 
@@ -27,6 +28,7 @@ orml-tokens = { workspace = true, features = ["std"] }
 [features]
 default = ["std"]
 std = [
+	"frame-benchmarking?/std",
 	"parity-scale-codec/std",
 	"scale-info/std",
 	"sp-runtime/std",
@@ -36,6 +38,14 @@ std = [
 	"orml-traits/std",
 	"primitives/std",
 	"module-support/std",
+]
+runtime-benchmarks = [
+	"frame-benchmarking/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
+	"orml-tokens/runtime-benchmarks",
+	"module-currencies/runtime-benchmarks",
 ]
 try-runtime = [
 	"frame-support/try-runtime",

@@ -22,7 +22,7 @@
 
 use super::*;
 use frame_support::{
-	construct_runtime, derive_impl, ord_parameter_types, parameter_types,
+	assert_ok, construct_runtime, derive_impl, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Nothing},
 	PalletId,
 };
@@ -85,6 +85,8 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = ();
 	type ReserveIdentifier = ReserveIdentifier;
 	type DustRemovalWhitelist = Nothing;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 impl pallet_balances::Config for Runtime {
@@ -195,7 +197,7 @@ impl AuctionManager<AccountId> for MockAuctionManager {
 	}
 
 	fn get_total_collateral_in_auction(_id: Self::CurrencyId) -> Self::Balance {
-		Self::auction().map(|auction| auction.2).unwrap_or_default()
+		0
 	}
 }
 
@@ -220,6 +222,8 @@ impl module_cdp_treasury::Config for Runtime {
 	type TreasuryAccount = TreasuryAccount;
 	type WeightInfo = ();
 	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 parameter_types! {
@@ -246,6 +250,8 @@ impl module_dex::Config for Runtime {
 	type ListingOrigin = EnsureSignedBy<One, AccountId>;
 	type ExtendedProvisioningBlocks = ConstU64<0>;
 	type OnLiquidityPoolUpdated = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 impl pallet_timestamp::Config for Runtime {
@@ -401,6 +407,106 @@ parameter_types! {
 	pub const SettleErc20EvmOrigin: AccountId = AccountId32::new([255u8; 32]);
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+pub struct MockBenchmarkHelper;
+#[cfg(feature = "runtime-benchmarks")]
+impl BenchmarkHelper<CurrencyId, BlockNumber, AccountId> for MockBenchmarkHelper {
+	fn setup_on_initialize(_c: u32) -> Option<BlockNumber> {
+		Some(1u64)
+	}
+	fn setup_collateral_currency_ids() -> Vec<CurrencyId> {
+		vec![BTC, AUSD]
+	}
+	fn setup_liquidate_by_auction(_b: u32) -> Option<(CurrencyId, AccountId)> {
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			RuntimeOrigin::signed(ALICE),
+			BTC,
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
+		));
+		setup_default_collateral(AUSD);
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 500));
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 500);
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
+
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			RuntimeOrigin::signed(ALICE),
+			BTC,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 1))),
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+		));
+
+		Some((BTC, ALICE))
+	}
+	fn setup_liquidate_by_dex() -> Option<(CurrencyId, AccountId)> {
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			RuntimeOrigin::signed(ALICE),
+			BTC,
+			Change::NewValue(Some(Rate::saturating_from_rational(1, 100000))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 2))),
+			Change::NewValue(Some(Rate::saturating_from_rational(2, 10))),
+			Change::NewValue(Some(Ratio::saturating_from_rational(9, 5))),
+			Change::NewValue(10000),
+		));
+		setup_default_collateral(AUSD);
+		assert_ok!(DEXModule::add_liquidity(
+			RuntimeOrigin::signed(CAROL),
+			BTC,
+			AUSD,
+			100,
+			121,
+			0,
+			false
+		));
+		assert_eq!(DEXModule::get_liquidity_pool(BTC, AUSD), (100, 121));
+
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 500));
+		assert_eq!(Currencies::free_balance(BTC, &ALICE), 900);
+		assert_eq!(Currencies::free_balance(AUSD, &ALICE), 50);
+		assert_eq!(LoansModule::positions(BTC, ALICE).debit, 500);
+		assert_eq!(LoansModule::positions(BTC, ALICE).collateral, 100);
+
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			RuntimeOrigin::signed(ALICE),
+			BTC,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::max_value())),
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+		));
+
+		Some((BTC, ALICE))
+	}
+	fn setup_settle() -> Option<(CurrencyId, AccountId)> {
+		setup_default_collateral(BTC);
+
+		assert_ok!(CDPEngineModule::adjust_position(&ALICE, BTC, 100, 500));
+
+		// changes alice into unsafe position
+		assert_ok!(CDPEngineModule::set_collateral_params(
+			RuntimeOrigin::signed(ALICE),
+			BTC,
+			Change::NoChange,
+			Change::NewValue(Some(Ratio::saturating_from_rational(3, 1))),
+			Change::NoChange,
+			Change::NoChange,
+			Change::NoChange,
+		));
+
+		mock_shutdown();
+		Some((BTC, ALICE))
+	}
+}
+
 impl Config for Runtime {
 	type PriceSource = MockPriceSource;
 	type DefaultLiquidationRatio = DefaultLiquidationRatio;
@@ -427,6 +533,8 @@ impl Config for Runtime {
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
 	type SettleErc20EvmOrigin = SettleErc20EvmOrigin;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = MockBenchmarkHelper;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -535,4 +643,16 @@ pub fn account_id_from_u32(num: u32) -> AccountId {
 	let index = num.to_le_bytes();
 	data[0..4].copy_from_slice(&index[..]);
 	AccountId::new(data)
+}
+
+pub fn setup_default_collateral(currency_id: CurrencyId) {
+	assert_ok!(CDPEngineModule::set_collateral_params(
+		RuntimeOrigin::signed(ALICE),
+		currency_id,
+		Change::NewValue(Some(Default::default())),
+		Change::NoChange,
+		Change::NoChange,
+		Change::NoChange,
+		Change::NewValue(10000),
+	));
 }

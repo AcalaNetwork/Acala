@@ -87,6 +87,8 @@ pub mod runner;
 
 pub mod bench;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 mod mock;
 mod tests;
 pub mod weights;
@@ -994,7 +996,7 @@ pub mod module {
 			#[pallet::compact] storage_limit: u32,
 			access_list: Vec<AccessListItem>,
 		) -> DispatchResultWithPostInfo {
-			T::NetworkContractOrigin::ensure_origin(origin)?;
+			T::NetworkContractOrigin::ensure_origin_or_root(origin)?;
 
 			let source = T::NetworkContractSource::get();
 			let source_account = T::AddressMapping::get_account_id(&source);
@@ -1085,7 +1087,7 @@ pub mod module {
 			#[pallet::compact] storage_limit: u32,
 			access_list: Vec<AccessListItem>,
 		) -> DispatchResultWithPostInfo {
-			T::NetworkContractOrigin::ensure_origin(origin)?;
+			T::NetworkContractOrigin::ensure_origin_or_root(origin)?;
 
 			ensure!(Self::accounts(target).is_none(), Error::<T>::ContractAlreadyExisted);
 
@@ -1200,7 +1202,7 @@ pub mod module {
 		#[pallet::call_index(9)]
 		#[pallet::weight(<T as Config>::WeightInfo::publish_free())]
 		pub fn publish_free(origin: OriginFor<T>, contract: EvmAddress) -> DispatchResultWithPostInfo {
-			T::FreePublicationOrigin::ensure_origin(origin)?;
+			T::FreePublicationOrigin::ensure_origin_or_root(origin)?;
 			Self::mark_published(contract, None)?;
 			Pallet::<T>::deposit_event(Event::<T>::ContractPublished { contract });
 			Ok(().into())

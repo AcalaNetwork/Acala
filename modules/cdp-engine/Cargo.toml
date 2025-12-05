@@ -9,6 +9,7 @@ log = { workspace = true }
 rand_chacha = { workspace = true }
 parity-scale-codec = { workspace = true }
 scale-info = { workspace = true }
+frame-benchmarking = { workspace = true, optional = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 sp-application-crypto = {workspace = true }
@@ -17,6 +18,7 @@ orml-utilities = { workspace = true }
 sp-io = {workspace = true }
 sp-runtime = {workspace = true }
 sp-std = {workspace = true }
+module-cdp-treasury = { workspace = true, optional = true }
 module-support = { workspace = true }
 module-loans = { workspace = true }
 primitives = { workspace = true }
@@ -39,6 +41,7 @@ module-evm-bridge = { workspace = true, features = ["std"] }
 default = ["std"]
 std = [
 	"parity-scale-codec/std",
+	"frame-benchmarking?/std",
 	"frame-support/std",
 	"frame-system/std",
 	"module-loans/std",
@@ -53,6 +56,15 @@ std = [
 	"sp-runtime/std",
 	"sp-std/std",
 	"module-support/std",
+]
+runtime-benchmarks = [
+	"frame-benchmarking/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
+	"orml-tokens/runtime-benchmarks",
+	"module-cdp-treasury/runtime-benchmarks",
+	"module-dex/runtime-benchmarks",
 ]
 try-runtime = [
 	"frame-support/try-runtime",

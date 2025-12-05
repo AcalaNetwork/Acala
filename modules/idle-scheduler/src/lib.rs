@@ -36,9 +36,14 @@ use sp_runtime::{
 };
 use sp_std::{cmp::PartialEq, fmt::Debug, prelude::*};
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 mod mock;
 mod tests;
 mod weights;
+
+#[cfg(feature = "runtime-benchmarks")]
+pub use benchmarking::BenchmarkHelper;
 pub use module::*;
 pub use weights::WeightInfo;
 
@@ -69,6 +74,9 @@ pub mod module {
 		/// relaychain blocks.
 		#[pallet::constant]
 		type DisableBlockThreshold: Get<BlockNumber>;
+
+		#[cfg(feature = "runtime-benchmarks")]
+		type BenchmarkHelper: BenchmarkHelper<Self::Task>;
 	}
 
 	#[pallet::event]

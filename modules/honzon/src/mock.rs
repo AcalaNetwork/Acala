@@ -59,6 +59,7 @@ pub const ACA: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
 pub const AUSD: CurrencyId = CurrencyId::Token(TokenSymbol::AUSD);
 pub const BTC: CurrencyId = CurrencyId::ForeignAsset(255);
 pub const DOT: CurrencyId = CurrencyId::Token(TokenSymbol::DOT);
+pub const LDOT: CurrencyId = CurrencyId::Token(TokenSymbol::LDOT);
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
@@ -85,6 +86,8 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = ();
 	type ReserveIdentifier = ReserveIdentifier;
 	type DustRemovalWhitelist = Nothing;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 impl pallet_balances::Config for Runtime {
@@ -207,6 +210,8 @@ impl module_cdp_treasury::Config for Runtime {
 	type TreasuryAccount = TreasuryAccount;
 	type WeightInfo = ();
 	type StableAsset = MockStableAsset<CurrencyId, Balance, AccountId, BlockNumber>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 impl pallet_timestamp::Config for Runtime {
@@ -307,16 +312,40 @@ impl module_cdp_engine::Config for Runtime {
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
 	type SettleErc20EvmOrigin = SettleErc20EvmOrigin;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
+
+#[cfg(feature = "runtime-benchmarks")]
+pub struct MockBenchmarkHelper;
+#[cfg(feature = "runtime-benchmarks")]
+impl BenchmarkHelper<CurrencyId, AccountId> for MockBenchmarkHelper {
+	fn setup_collateral_currency_ids() -> Vec<CurrencyId> {
+		vec![ACA, AUSD, DOT, BTC]
+	}
+	fn setup_stable_currency_id_and_amount() -> Option<(CurrencyId, Balance)> {
+		Some((AUSD, 100))
+	}
+	fn setup_staking_currency_id_and_amount() -> Option<(CurrencyId, Balance)> {
+		Some((DOT, 100))
+	}
+	fn setup_liquid_currency_id_and_amount() -> Option<(CurrencyId, Balance)> {
+		Some((LDOT, 100))
+	}
+	fn setup_dex_pools(_maker: AccountId) {}
+	fn setup_feed_price(_currency_id: CurrencyId, _price: Price) {}
+}
 
 impl Config for Runtime {
 	type Currency = PalletBalances;
 	type DepositPerAuthorization = ConstU128<100>;
 	type CollateralCurrencyIds = CollateralCurrencyIds<Runtime>;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = MockBenchmarkHelper;
 }
 
 construct_runtime!(

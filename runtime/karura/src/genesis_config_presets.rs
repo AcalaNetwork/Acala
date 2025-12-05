@@ -18,7 +18,8 @@
 
 use crate::{
 	AccountId, BalancesConfig, CollatorSelectionConfig, NativeTokenExistentialDeposit, ParachainInfoConfig,
-	PolkadotXcmConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys, SudoConfig,
+	PolkadotXcmConfig, RuntimeGenesisConfig, SessionConfig, SessionDuration, SessionKeys, SessionManagerConfig,
+	SudoConfig,
 };
 
 use alloc::{vec, vec::Vec};
@@ -78,6 +79,9 @@ fn testnet_genesis(
 			safe_xcm_version: Some(SAFE_XCM_VERSION)
 		},
 		sudo: SudoConfig { key: Some(root) },
+		session_manager: SessionManagerConfig {
+			session_duration: SessionDuration::get(),
+		}
 	})
 }
 

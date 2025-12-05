@@ -37,6 +37,6 @@ describeWithAcala("Acala RPC (EVM call fill block)", (context) => {
 
         const evmCreateEvents = events.events.filter((item) => context.provider.api.events.evm.Executed.is(item.event));
 
-        expect(evmCreateEvents.length).to.closeTo(275, 10);
+        expect(evmCreateEvents.length).to.closeTo(240, 10);
     });
 });

@@ -41,10 +41,14 @@ use sp_runtime::{
 };
 use sp_std::marker::PhantomData;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 mod mock;
 mod tests;
 pub mod weights;
 
+#[cfg(feature = "runtime-benchmarks")]
+pub use benchmarking::BenchmarkHelper;
 pub use module::*;
 pub use weights::WeightInfo;
 
@@ -106,6 +110,9 @@ pub mod module {
 
 		/// Weight information for the extrinsics in this module.
 		type WeightInfo: WeightInfo;
+
+		#[cfg(feature = "runtime-benchmarks")]
+		type BenchmarkHelper: BenchmarkHelper<CurrencyId>;
 	}
 
 	#[pallet::error]
@@ -151,7 +158,7 @@ pub mod module {
 		#[pallet::call_index(0)]
 		#[pallet::weight((T::WeightInfo::lock_price(), DispatchClass::Operational))]
 		pub fn lock_price(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResult {
-			T::LockOrigin::ensure_origin(origin)?;
+			T::LockOrigin::ensure_origin_or_root(origin)?;
 			<Pallet<T> as LockablePrice<CurrencyId>>::lock_price(currency_id)?;
 			Ok(())
 		}
@@ -164,7 +171,7 @@ pub mod module {
 		#[pallet::call_index(1)]
 		#[pallet::weight((T::WeightInfo::unlock_price(), DispatchClass::Operational))]
 		pub fn unlock_price(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResult {
-			T::LockOrigin::ensure_origin(origin)?;
+			T::LockOrigin::ensure_origin_or_root(origin)?;
 			<Pallet<T> as LockablePrice<CurrencyId>>::unlock_price(currency_id)?;
 			Ok(())
 		}

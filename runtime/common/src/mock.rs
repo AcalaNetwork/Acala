@@ -100,6 +100,8 @@ impl orml_tokens::Config for TestRuntime {
 	type MaxReserves = ();
 	type ReserveIdentifier = ReserveIdentifier;
 	type DustRemovalWhitelist = Nothing;
+	#[cfg(any(feature = "wasm-bench", feature = "runtime-benchmarks"))]
+	type BenchmarkHelper = ();
 }
 
 parameter_types! {
@@ -142,6 +144,8 @@ impl module_idle_scheduler::Config for TestRuntime {
 	type MinimumWeightRemainInBlock = MinimumWeightRemainInBlock;
 	type RelayChainBlockNumberProvider = MockBlockNumberProvider;
 	type DisableBlockThreshold = ConstU32<6>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 pub struct GasToWeight;

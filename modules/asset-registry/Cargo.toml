@@ -10,6 +10,7 @@ scale-info = { workspace = true }
 parity-scale-codec = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true  }
+frame-benchmarking = { workspace = true, optional = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 primitives = { workspace = true }
@@ -37,11 +38,15 @@ std = [
 	"scale-info/std",
 	"sp-runtime/std",
 	"sp-std/std",
+	"frame-benchmarking?/std",
 	"frame-support/std",
 	"frame-system/std",
 	"primitives/std",
 	"xcm/std",
 	"module-support/std",
+]
+runtime-benchmarks = [
+	"frame-benchmarking/runtime-benchmarks",
 ]
 try-runtime = [
 	"frame-support/try-runtime",

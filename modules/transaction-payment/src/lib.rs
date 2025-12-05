@@ -60,10 +60,14 @@ use xcm::v5::prelude::Location;
 
 const LOG_TARGET: &str = "transaction-payment";
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 mod mock;
 mod tests;
 pub mod weights;
 
+#[cfg(feature = "runtime-benchmarks")]
+pub use benchmarking::BenchmarkHelper;
 pub use module::*;
 pub use weights::WeightInfo;
 
@@ -392,6 +396,9 @@ pub mod module {
 
 		/// The origin which change swap balance threshold or enable charge fee pool.
 		type UpdateOrigin: EnsureOrigin<Self::RuntimeOrigin>;
+
+		#[cfg(feature = "runtime-benchmarks")]
+		type BenchmarkHelper: BenchmarkHelper<Self::AccountId, CurrencyId, Balance>;
 	}
 
 	#[pallet::type_value]
@@ -605,7 +612,7 @@ pub mod module {
 			pool_size: Balance,
 			swap_threshold: Balance,
 		) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
+			T::UpdateOrigin::ensure_origin_or_root(origin)?;
 			Self::initialize_pool(currency_id, pool_size, swap_threshold)
 		}
 
@@ -613,7 +620,7 @@ pub mod module {
 		#[pallet::call_index(2)]
 		#[pallet::weight(<T as Config>::WeightInfo::disable_charge_fee_pool())]
 		pub fn disable_charge_fee_pool(origin: OriginFor<T>, currency_id: CurrencyId) -> DispatchResult {
-			T::UpdateOrigin::ensure_origin(origin)?;
+			T::UpdateOrigin::ensure_origin_or_root(origin)?;
 			Self::disable_pool(currency_id)
 		}
 

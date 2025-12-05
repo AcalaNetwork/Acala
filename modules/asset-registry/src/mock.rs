@@ -20,6 +20,7 @@
 
 #![cfg(test)]
 
+use super::*;
 use crate as asset_registry;
 use frame_support::{
 	assert_ok, construct_runtime, derive_impl, ord_parameter_types, parameter_types,
@@ -114,12 +115,26 @@ impl module_evm_bridge::Config for Runtime {
 parameter_types! {
 	pub const KSMCurrencyId: CurrencyId = CurrencyId::Token(TokenSymbol::KSM);
 }
+
+#[cfg(feature = "runtime-benchmarks")]
+pub struct MockBenchmarkHelper;
+#[cfg(feature = "runtime-benchmarks")]
+impl BenchmarkHelper for MockBenchmarkHelper {
+	fn setup_deploy_contract() -> Option<EvmAddress> {
+		let _ = Balances::deposit_creating(&alice(), 1_000_000_000_000);
+		deploy_contracts();
+		Some(erc20_address())
+	}
+}
+
 impl asset_registry::Config for Runtime {
 	type Currency = Balances;
 	type StakingCurrencyId = KSMCurrencyId;
 	type EVMBridge = module_evm_bridge::EVMBridge<Runtime>;
 	type RegisterOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = MockBenchmarkHelper;
 }
 
 type Block = frame_system::mocking::MockBlock<Runtime>;

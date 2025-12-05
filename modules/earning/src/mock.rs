@@ -104,6 +104,8 @@ impl Config for Runtime {
 	type MaxUnbondingChunks = ConstU32<3>;
 	type LockIdentifier = EarningLockIdentifier;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 type Block = frame_system::mocking::MockBlock<Runtime>;

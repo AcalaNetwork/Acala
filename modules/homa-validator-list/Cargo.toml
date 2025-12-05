@@ -10,6 +10,7 @@ parity-scale-codec = { workspace = true, features = ["max-encoded-len"] }
 scale-info = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
+frame-benchmarking = { workspace = true, optional = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 orml-traits = { workspace = true }
@@ -29,6 +30,7 @@ std = [
 	"serde",
 
 	"parity-scale-codec/std",
+	"frame-benchmarking?/std",
 	"frame-support/std",
 	"frame-system/std",
 	"orml-traits/std",
@@ -37,6 +39,13 @@ std = [
 	"sp-runtime/std",
 	"sp-std/std",
 	"module-support/std",
+]
+runtime-benchmarks = [
+	"frame-benchmarking/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
+	"orml-tokens/runtime-benchmarks",
 ]
 try-runtime = [
 	"frame-support/try-runtime",

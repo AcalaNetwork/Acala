@@ -46,6 +46,7 @@ mod dex_oracle {
 parameter_types! {
 	pub static AUSDDOTPair: TradingPair = TradingPair::from_currency_ids(AUSD, DOT).unwrap();
 	pub static ACADOTPair: TradingPair = TradingPair::from_currency_ids(ACA, DOT).unwrap();
+	pub static ACAAUSDPair: TradingPair = TradingPair::from_currency_ids(ACA, AUSD).unwrap();
 }
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
@@ -66,6 +67,7 @@ impl pallet_timestamp::Config for Runtime {
 parameter_types! {
 	static AusdDotPool: (Balance, Balance) = (Zero::zero(), Zero::zero());
 	static AcaDotPool: (Balance, Balance) = (Zero::zero(), Zero::zero());
+	static AcaAusdPool: (Balance, Balance) = (Zero::zero(), Zero::zero());
 }
 
 pub fn set_pool(trading_pair: &TradingPair, pool_0: Balance, pool_1: Balance) {
@@ -73,6 +75,8 @@ pub fn set_pool(trading_pair: &TradingPair, pool_0: Balance, pool_1: Balance) {
 		AusdDotPool::mutate(|v| *v = (pool_0, pool_1));
 	} else if *trading_pair == ACADOTPair::get() {
 		AcaDotPool::mutate(|v| *v = (pool_0, pool_1));
+	} else if *trading_pair == ACAAUSDPair::get() {
+		AcaAusdPool::mutate(|v| *v = (pool_0, pool_1));
 	}
 }
 
@@ -85,6 +89,8 @@ impl DEXManager<AccountId, Balance, CurrencyId> for MockDEX {
 					AusdDotPool::get()
 				} else if trading_pair == ACADOTPair::get() {
 					AcaDotPool::get()
+				} else if trading_pair == ACAAUSDPair::get() {
+					AcaAusdPool::get()
 				} else {
 					(0, 0)
 				}
@@ -146,11 +152,51 @@ ord_parameter_types! {
 	pub const One: AccountId = 1;
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+pub struct MockBenchmarkHelper;
+#[cfg(feature = "runtime-benchmarks")]
+impl BenchmarkHelper<CurrencyId, Moment> for MockBenchmarkHelper {
+	fn setup_on_initialize(n: u32, u: u32) {
+		let trading_pair_list = vec![AUSDDOTPair::get(), ACADOTPair::get(), ACAAUSDPair::get()];
+
+		for i in 0..n {
+			let trading_pair = trading_pair_list[i as usize];
+			set_pool(&trading_pair, 100, 1000);
+			DexOracle::enable_average_price(
+				RuntimeOrigin::signed(1),
+				trading_pair.first(),
+				trading_pair.second(),
+				240000,
+			)
+			.unwrap();
+		}
+		for j in 0..u.min(n) {
+			let update_pair = trading_pair_list[j as usize];
+			DexOracle::update_average_price_interval(
+				RuntimeOrigin::signed(1),
+				update_pair.first(),
+				update_pair.second(),
+				24000,
+			)
+			.unwrap();
+		}
+		frame_system::Pallet::<Runtime>::set_block_number(1);
+		pallet_timestamp::Pallet::<Runtime>::set_timestamp(24000);
+	}
+
+	fn setup_inject_liquidity() -> Option<(CurrencyId, CurrencyId, Moment)> {
+		set_pool(&AUSDDOTPair::get(), 1_000, 100);
+		Some((AUSD, DOT, 1000))
+	}
+}
+
 impl Config for Runtime {
 	type DEX = MockDEX;
 	type Time = Timestamp;
 	type UpdateOrigin = EnsureSignedBy<One, AccountId>;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = MockBenchmarkHelper;
 }
 
 type Block = frame_system::mocking::MockBlock<Runtime>;

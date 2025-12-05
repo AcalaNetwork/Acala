@@ -12,9 +12,13 @@ sp-runtime = { workspace = true }
 sp-io = { workspace = true }
 sp-std = { workspace = true }
 
+frame-benchmarking = { workspace = true, optional = true }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 
+pallet-balances = { workspace = true, optional = true }
+
+orml-tokens = { workspace = true, optional = true }
 orml-traits = { workspace = true }
 
 primitives = { workspace = true }
@@ -35,6 +39,7 @@ module-evm-bridge = { workspace = true, features = ["std"] }
 default = ["std"]
 std = [
 	"parity-scale-codec/std",
+	"frame-benchmarking?/std",
 	"frame-support/std",
 	"frame-system/std",
 	"orml-traits/std",
@@ -45,6 +50,11 @@ std = [
 	"sp-runtime/std",
 	"sp-std/std",
 	"module-support/std",
+]
+runtime-benchmarks = [
+	"frame-benchmarking/runtime-benchmarks",
+	"pallet-balances/runtime-benchmarks",
+	"orml-tokens/runtime-benchmarks",
 ]
 try-runtime = [
 	"frame-support/try-runtime",

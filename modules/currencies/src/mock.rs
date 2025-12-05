@@ -98,6 +98,8 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 pub const NATIVE_CURRENCY_ID: CurrencyId = CurrencyId::Token(TokenSymbol::ACA);
@@ -212,6 +214,18 @@ parameter_types! {
 	pub Erc20HoldingAccount: H160 = primitives::evm::ERC20_HOLDING_ACCOUNT;
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+pub struct MockBenchmarkHelper;
+#[cfg(feature = "runtime-benchmarks")]
+impl BenchmarkHelper<AccountId, CurrencyId, Balance> for MockBenchmarkHelper {
+	fn setup_get_staking_currency_id_and_amount() -> Option<(CurrencyId, Balance)> {
+		Some((DOT, 10000))
+	}
+	fn setup_get_treasury_account() -> Option<AccountId> {
+		Some(DustAccount::get())
+	}
+}
+
 impl Config for Runtime {
 	type MultiCurrency = Tokens;
 	type NativeCurrency = AdaptedBasicCurrency;
@@ -223,6 +237,8 @@ impl Config for Runtime {
 	type GasToWeight = GasToWeight;
 	type SweepOrigin = EnsureSignedBy<CouncilAccount, AccountId>;
 	type OnDust = crate::TransferDust<Runtime, DustAccount>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = MockBenchmarkHelper;
 }
 
 pub type NativeCurrency = Currency<Runtime, GetNativeCurrencyId>;

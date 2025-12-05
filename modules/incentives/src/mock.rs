@@ -83,6 +83,8 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 parameter_types! {
@@ -124,6 +126,18 @@ ord_parameter_types! {
 	pub const Root: AccountId = ROOT::get();
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+pub struct MockBenchmarkHelper;
+#[cfg(feature = "runtime-benchmarks")]
+impl BenchmarkHelper<CurrencyId, Balance> for MockBenchmarkHelper {
+	fn setup_stable_currency_id_and_amount() -> Option<(CurrencyId, Balance)> {
+		Some((AUSD, 10000))
+	}
+	fn setup_collateral_currency_ids() -> Vec<(CurrencyId, Balance)> {
+		vec![(ACA, 100), (AUSD, 100)]
+	}
+}
+
 impl Config for Runtime {
 	type RewardsSource = RewardsSource;
 	type AccumulatePeriod = ConstU64<10>;
@@ -133,6 +147,8 @@ impl Config for Runtime {
 	type EmergencyShutdown = MockEmergencyShutdown;
 	type PalletId = IncentivesPalletId;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = MockBenchmarkHelper;
 }
 
 type Block = frame_system::mocking::MockBlock<Runtime>;

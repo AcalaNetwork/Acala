@@ -23,7 +23,7 @@
 use super::*;
 pub use crate as transaction_payment;
 use frame_support::{
-	construct_runtime, derive_impl, ord_parameter_types, parameter_types,
+	assert_ok, construct_runtime, derive_impl, ord_parameter_types, parameter_types,
 	traits::{ConstU128, ConstU32, ConstU64, Nothing},
 	weights::{WeightToFee as WeightToFeeT, WeightToFeeCoefficients, WeightToFeePolynomial},
 	PalletId,
@@ -38,7 +38,7 @@ use primitives::{Amount, ReserveIdentifier, TokenSymbol, TradingPair};
 use smallvec::smallvec;
 use sp_core::{crypto::AccountId32, H160};
 use sp_runtime::{
-	traits::{AccountIdConversion, IdentityLookup, One},
+	traits::{AccountIdConversion, IdentityLookup, One, UniqueSaturatedInto},
 	BuildStorage, Perbill,
 };
 
@@ -103,6 +103,8 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = Nothing;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 impl pallet_balances::Config for Runtime {
@@ -140,6 +142,8 @@ impl module_currencies::Config for Runtime {
 	type GasToWeight = ();
 	type SweepOrigin = EnsureSignedBy<Zero, AccountId>;
 	type OnDust = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 ord_parameter_types! {
@@ -169,6 +173,8 @@ impl module_dex::Config for Runtime {
 	type ListingOrigin = EnsureSignedBy<Zero, AccountId>;
 	type ExtendedProvisioningBlocks = ConstU64<0>;
 	type OnLiquidityPoolUpdated = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 impl module_aggregated_dex::Config for Runtime {
@@ -178,6 +184,8 @@ impl module_aggregated_dex::Config for Runtime {
 	type DexSwapJointList = AlternativeSwapPathJointList;
 	type SwapPathLimit = ConstU32<3>;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 parameter_types! {
@@ -253,6 +261,66 @@ impl WeightToFeeT for TransactionByteFee {
 	}
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+pub struct MockBenchmarkHelper;
+#[cfg(feature = "runtime-benchmarks")]
+impl BenchmarkHelper<AccountId, CurrencyId, Balance> for MockBenchmarkHelper {
+	fn setup_stable_currency_id() -> Option<CurrencyId> {
+		Some(AUSD)
+	}
+	fn setup_liquid_currency_id() -> Option<CurrencyId> {
+		Some(LDOT)
+	}
+	fn setup_enable_fee_pool() -> Option<(AccountId, Balance, Balance, Balance)> {
+		let treasury_account: AccountId = TreasuryPalletId::get().into_account_truncating();
+		let sub_account: AccountId = TransactionPaymentPalletId::get().into_sub_account_truncating(AUSD);
+		let native_ed = PalletBalances::minimum_balance();
+		let stable_ed: Balance = <Currencies as MultiCurrency<AccountId>>::minimum_balance(AUSD);
+		let pool_size: Balance = native_ed * 50;
+		let swap_threshold: Balance = native_ed * 2;
+
+		assert_ok!(Currencies::update_balance(
+			RuntimeOrigin::root(),
+			treasury_account.clone(),
+			ACA,
+			(pool_size * 10).unique_saturated_into(),
+		));
+		assert_ok!(Currencies::update_balance(
+			RuntimeOrigin::root(),
+			treasury_account.clone(),
+			AUSD,
+			(stable_ed * 10).unique_saturated_into(),
+		));
+
+		assert_ok!(Currencies::update_balance(
+			RuntimeOrigin::root(),
+			ALICE,
+			ACA,
+			100000.unique_saturated_into(),
+		));
+		assert_ok!(Currencies::update_balance(
+			RuntimeOrigin::root(),
+			ALICE,
+			AUSD,
+			100000.unique_saturated_into(),
+		));
+
+		// enable dex
+		assert_ok!(DEXModule::add_liquidity(
+			RuntimeOrigin::signed(ALICE),
+			AUSD,
+			ACA,
+			1000,
+			10000,
+			0,
+			false
+		));
+
+		Some((sub_account, stable_ed, pool_size, swap_threshold))
+	}
+	fn setup_enable_stable_asset() {}
+}
+
 impl Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 	type NativeCurrencyId = GetNativeCurrencyId;
@@ -277,6 +345,8 @@ impl Config for Runtime {
 	type CustomFeeSurplus = CustomFeeSurplus;
 	type AlternativeFeeSurplus = AlternativeFeeSurplus;
 	type DefaultFeeTokens = DefaultFeeTokens;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = MockBenchmarkHelper;
 }
 
 parameter_types! {

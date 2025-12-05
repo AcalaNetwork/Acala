@@ -278,7 +278,7 @@ fn call_reverts_with_message() {
 
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 
-		let alice_balance = INITIAL_BALANCE - 323 * EVM::get_storage_deposit_per_byte();
+		let alice_balance = INITIAL_BALANCE - 10223 * EVM::get_storage_deposit_per_byte();
 
 		assert_eq!(balance(alice()), alice_balance);
 
@@ -352,9 +352,9 @@ fn should_publish_payable_contract() {
 		let contract_address = result.value;
 
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
-		assert_eq!(result.used_storage, 287);
+		assert_eq!(result.used_storage, 10187);
 
-		let alice_balance = INITIAL_BALANCE - amount - 287 * EVM::get_storage_deposit_per_byte();
+		let alice_balance = INITIAL_BALANCE - amount - 10187 * EVM::get_storage_deposit_per_byte();
 		assert_eq!(balance(alice()), alice_balance);
 		assert_eq!(balance(contract_address), amount);
 
@@ -441,9 +441,9 @@ fn should_transfer_from_contract() {
 		)
 		.expect("create shouldn't fail");
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
-		assert_eq!(result.used_storage, 1198);
+		assert_eq!(result.used_storage, 11098);
 
-		let alice_balance = INITIAL_BALANCE - 1198 * EVM::get_storage_deposit_per_byte();
+		let alice_balance = INITIAL_BALANCE - 11098 * EVM::get_storage_deposit_per_byte();
 		assert_eq!(balance(alice()), alice_balance);
 		assert_eq!(
 			eth_balance(alice()),
@@ -628,9 +628,9 @@ fn contract_should_publish_contracts() {
 		)
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
-		assert_eq!(result.used_storage, 467);
+		assert_eq!(result.used_storage, 10367);
 
-		let alice_balance = INITIAL_BALANCE - 467 * EVM::get_storage_deposit_per_byte();
+		let alice_balance = INITIAL_BALANCE - 10367 * EVM::get_storage_deposit_per_byte();
 
 		assert_eq!(balance(alice()), alice_balance);
 		let factory_contract_address = result.value;
@@ -638,7 +638,7 @@ fn contract_should_publish_contracts() {
 		assert_eq!(balance(factory_contract_address), 0);
 		assert_eq!(
 			reserved_balance(factory_contract_address),
-			467 * EVM::get_storage_deposit_per_byte()
+			10367 * EVM::get_storage_deposit_per_byte()
 		);
 
 		// Factory.createContract
@@ -658,22 +658,22 @@ fn contract_should_publish_contracts() {
 		)
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
-		assert_eq!(result.used_storage, 281);
+		assert_eq!(result.used_storage, 10181);
 
 		assert_eq!(
 			balance(alice()),
-			alice_balance - amount - 281 * EVM::get_storage_deposit_per_byte()
+			alice_balance - amount - 10181 * EVM::get_storage_deposit_per_byte()
 		);
 		assert_eq!(balance(factory_contract_address), amount);
 		assert_eq!(
 			reserved_balance(factory_contract_address),
-			(467 + 128) * EVM::get_storage_deposit_per_byte()
+			(10367 + 128) * EVM::get_storage_deposit_per_byte()
 		);
 		let contract_address = H160::from_str("7b8f8ca099f6e33cf1817cf67d0556429cfc54e4").unwrap();
 		assert_eq!(balance(contract_address), 0);
 		assert_eq!(
 			reserved_balance(contract_address),
-			153 * EVM::get_storage_deposit_per_byte()
+			10053 * EVM::get_storage_deposit_per_byte()
 		);
 	});
 }
@@ -709,12 +709,12 @@ fn contract_should_publish_contracts_without_payable() {
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 
-		let alice_balance = INITIAL_BALANCE - 464 * EVM::get_storage_deposit_per_byte();
+		let alice_balance = INITIAL_BALANCE - 10364 * EVM::get_storage_deposit_per_byte();
 
 		assert_eq!(balance(alice()), alice_balance);
 		let factory_contract_address = result.value;
 		assert_eq!(balance(factory_contract_address), 0);
-		assert_eq!(reserved_balance(factory_contract_address), 4640);
+		assert_eq!(reserved_balance(factory_contract_address), 103640);
 
 		// Factory.createContract
 		let create_contract = from_hex("0x412a5a6d").unwrap();
@@ -732,7 +732,7 @@ fn contract_should_publish_contracts_without_payable() {
 		)
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
-		assert_eq!(result.used_storage, 290);
+		assert_eq!(result.used_storage, 10190);
 		assert_eq!(
 			balance(alice()),
 			alice_balance - (result.used_storage as u128 * EVM::get_storage_deposit_per_byte())
@@ -740,7 +740,7 @@ fn contract_should_publish_contracts_without_payable() {
 		assert_eq!(balance(factory_contract_address), 0);
 		assert_eq!(
 			reserved_balance(factory_contract_address),
-			(464 + 128) * EVM::get_storage_deposit_per_byte()
+			(10364 + 128) * EVM::get_storage_deposit_per_byte()
 		);
 	});
 }
@@ -771,7 +771,7 @@ fn publish_factory() {
 			contract,
 			0,
 			2_000_000,
-			5000,
+			30000,
 			vec![],
 			vec![],
 			<Runtime as Config>::config(),
@@ -779,7 +779,7 @@ fn publish_factory() {
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
 		assert_eq!(result.used_gas.as_u64(), 155925);
-		assert_eq!(result.used_storage, 461);
+		assert_eq!(result.used_storage, 20261);
 		assert_eq!(
 			balance(alice()),
 			INITIAL_BALANCE - (result.used_storage as u128 * EVM::get_storage_deposit_per_byte())
@@ -820,7 +820,7 @@ fn create_nft_contract_works() {
 			contract: MIRRORED_TOKENS_ADDRESS_START | H160::from_low_u64_be(MIRRORED_NFT_ADDRESS_START),
 			logs: vec![],
 			used_gas: 93197,
-			used_storage: 284,
+			used_storage: 10184,
 		}));
 		assert_eq!(EVM::network_contract_index(), MIRRORED_NFT_ADDRESS_START + 1);
 	});
@@ -890,7 +890,7 @@ fn create_predeploy_contract_works() {
 			contract: addr,
 			logs: vec![],
 			used_gas: 93197,
-			used_storage: 284,
+			used_storage: 10184,
 		}));
 
 		assert_noop!(
@@ -969,8 +969,8 @@ fn should_transfer_maintainer() {
 		)
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
-		assert_eq!(result.used_storage, 461);
-		let alice_balance = INITIAL_BALANCE - 461 * EVM::get_storage_deposit_per_byte();
+		assert_eq!(result.used_storage, 20261);
+		let alice_balance = INITIAL_BALANCE - 20261 * EVM::get_storage_deposit_per_byte();
 		let contract_address = result.value;
 
 		assert_eq!(balance(alice()), alice_balance);
@@ -1046,8 +1046,8 @@ fn should_publish() {
 		let result = <Runtime as Config>::Runner::create(alice(), contract, 0, 21_000_000, 21_000_000, vec![], vec![], <Runtime as Config>::config()).unwrap();
 		let contract_address = result.value;
 
-		assert_eq!(result.used_storage, 284);
-		let alice_balance = INITIAL_BALANCE - 284 * EVM::get_storage_deposit_per_byte() - DEVELOPER_DEPOSIT;
+		assert_eq!(result.used_storage, 10184);
+		let alice_balance = INITIAL_BALANCE - 10184 * EVM::get_storage_deposit_per_byte() - DEVELOPER_DEPOSIT;
 
 		assert_eq!(balance(alice()), alice_balance);
 
@@ -1295,11 +1295,11 @@ fn should_set_code() {
 		)
 		.unwrap();
 		let contract_address = result.value;
-		assert_eq!(result.used_storage, 284);
-		let alice_balance = INITIAL_BALANCE - 284 * EVM::get_storage_deposit_per_byte() - DEVELOPER_DEPOSIT;
+		assert_eq!(result.used_storage, 10184);
+		let alice_balance = INITIAL_BALANCE - 10184 * EVM::get_storage_deposit_per_byte() - DEVELOPER_DEPOSIT;
 
 		assert_eq!(balance(alice()), alice_balance);
-		assert_eq!(reserved_balance(contract_address), 2840);
+		assert_eq!(reserved_balance(contract_address), 101840);
 
 		let code_hash = H256::from_str("164981e02df203a0fb32a0af7c2cd1cc7f9df7bb49a4d2b0219307bb68a4b603").unwrap();
 		assert_eq!(
@@ -1336,7 +1336,7 @@ fn should_set_code() {
 		));
 		assert_ok!(EVM::set_code(RuntimeOrigin::root(), contract_address, contract));
 
-		assert_eq!(reserved_balance(contract_address), 4150);
+		assert_eq!(reserved_balance(contract_address), 202150);
 
 		let new_code_hash = H256::from_str("9061d510f6235de4eae304e1a2a2ae22e1610ba893c018b7fabc1f1635f49877").unwrap();
 		assert_eq!(
@@ -1381,7 +1381,7 @@ fn should_set_code() {
 				ref_count: 1,
 			})
 		);
-		assert_eq!(reserved_balance(contract_address), 3000);
+		assert_eq!(reserved_balance(contract_address), 300000);
 
 		assert_noop!(
 			EVM::set_code(
@@ -1449,8 +1449,8 @@ fn should_selfdestruct_without_schedule_task() {
 		.unwrap();
 
 		let contract_address = result.value;
-		assert_eq!(result.used_storage, 287);
-		let alice_balance = INITIAL_BALANCE - 287 * EVM::get_storage_deposit_per_byte() - amount - DEVELOPER_DEPOSIT;
+		assert_eq!(result.used_storage, 10187);
+		let alice_balance = INITIAL_BALANCE - 10187 * EVM::get_storage_deposit_per_byte() - amount - DEVELOPER_DEPOSIT;
 
 		assert_eq!(balance(alice()), alice_balance);
 
@@ -1489,7 +1489,7 @@ fn should_selfdestruct_without_schedule_task() {
 		assert!(!CodeInfos::<Runtime>::contains_key(&code_hash));
 		assert!(!Codes::<Runtime>::contains_key(&code_hash));
 
-		let reserved_amount = 287 * EVM::get_storage_deposit_per_byte();
+		let reserved_amount = 10187 * EVM::get_storage_deposit_per_byte();
 
 		// refund storage deposit
 		assert_eq!(balance(alice()), alice_balance + amount + reserved_amount);
@@ -1549,8 +1549,8 @@ fn should_selfdestruct_with_schedule_task() {
 		.unwrap();
 
 		let contract_address = result.value;
-		assert_eq!(result.used_storage, 361);
-		let alice_balance = INITIAL_BALANCE - 361 * EVM::get_storage_deposit_per_byte() - amount - DEVELOPER_DEPOSIT;
+		assert_eq!(result.used_storage, 10261);
+		let alice_balance = INITIAL_BALANCE - 10261 * EVM::get_storage_deposit_per_byte() - amount - DEVELOPER_DEPOSIT;
 
 		assert_eq!(balance(alice()), alice_balance);
 
@@ -1657,7 +1657,7 @@ fn should_selfdestruct_with_schedule_task() {
 		// refund storage deposit
 		assert_eq!(
 			balance(alice()),
-			alice_balance + amount + 361 * EVM::get_storage_deposit_per_byte()
+			alice_balance + amount + 10261 * EVM::get_storage_deposit_per_byte()
 		);
 		assert_eq!(balance(contract_address), 0);
 		assert_eq!(reserved_balance(contract_address), 0);
@@ -1695,15 +1695,15 @@ fn storage_limit_should_work() {
 			contract.clone(),
 			0,
 			200_000,
-			1000,
+			20000,
 			vec![],
 			vec![],
 			<Runtime as Config>::config(),
 		)
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Returned));
-		assert_eq!(result.used_storage, 516);
-		let alice_balance = INITIAL_BALANCE - 516 * EVM::get_storage_deposit_per_byte();
+		assert_eq!(result.used_storage, 10416);
+		let alice_balance = INITIAL_BALANCE - 10416 * EVM::get_storage_deposit_per_byte();
 		assert_eq!(balance(alice()), alice_balance);
 
 		let factory_contract_address = result.value;
@@ -1711,7 +1711,7 @@ fn storage_limit_should_work() {
 		assert_eq!(balance(factory_contract_address), 0);
 		assert_eq!(
 			reserved_balance(factory_contract_address),
-			516 * EVM::get_storage_deposit_per_byte()
+			10416 * EVM::get_storage_deposit_per_byte()
 		);
 
 		// Factory.createContract(1)
@@ -1765,9 +1765,9 @@ fn storage_limit_should_work() {
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
 
-		// code_size + array_update(2 items) + extra_size = 290, array_length is already set
-		let expected_used_storage = 62 + 2 * 64 + 100;
-		assert_eq!(expected_used_storage, 290);
+		// code_size + array_update(2 items) + extra_size = 10190, array_length is already set
+		let expected_used_storage = 62 + 2 * 64 + 10000;
+		assert_eq!(expected_used_storage, 10190);
 		assert_eq!(result.used_storage, expected_used_storage);
 
 		// Factory.createContract(2)
@@ -1812,7 +1812,7 @@ fn storage_limit_should_work() {
 			create_contract,
 			amount,
 			1000000000,
-			452,
+			20252,
 			vec![],
 			vec![],
 			<Runtime as Config>::config(),
@@ -1820,10 +1820,10 @@ fn storage_limit_should_work() {
 		.unwrap();
 		assert_eq!(result.exit_reason, ExitReason::Succeed(ExitSucceed::Stopped));
 
-		// 2 * code_size + array_update(2 items) + extra_size = 452, array_length is already set
-		let expected_used_storage = 2 * 62 + 2 * 64 + 2 * 100;
+		// 2 * code_size + array_update(2 items) + extra_size = 20252, array_length is already set
+		let expected_used_storage = 2 * 62 + 2 * 64 + 2 * 10000;
 
-		assert_eq!(expected_used_storage, 452);
+		assert_eq!(expected_used_storage, 20252);
 		assert_eq!(result.used_storage, expected_used_storage);
 	});
 }
@@ -1849,7 +1849,7 @@ fn evm_execute_mode_should_work() {
 	).unwrap();
 
 	new_test_ext().execute_with(|| {
-		let mut alice_balance = INITIAL_BALANCE - 516 * EVM::get_storage_deposit_per_byte();
+		let mut alice_balance = INITIAL_BALANCE - 10416 * EVM::get_storage_deposit_per_byte();
 
 		let result = <Runtime as Config>::Runner::create(
 			alice(),
@@ -1867,8 +1867,8 @@ fn evm_execute_mode_should_work() {
 		let account = Accounts::<Runtime>::get(&result.value).unwrap();
 		let code_info = CodeInfos::<Runtime>::get(account.contract_info.unwrap().code_hash).unwrap();
 
-		// code_size + extra_size = 516
-		let expected_used_storage = 416 + 100;
+		// code_size + extra_size = 10416
+		let expected_used_storage = 416 + 10000;
 		assert_eq!(code_info.code_size, 416);
 		assert_eq!(result.used_storage, expected_used_storage);
 		assert_eq!(balance(alice()), alice_balance);
@@ -1889,13 +1889,13 @@ fn evm_execute_mode_should_work() {
 			create_contract,
 			Default::default(),
 			2_100_000,
-			1000,
+			20000,
 			ExecutionMode::EstimateGas,
 		)
 		.unwrap();
-		// code_size + array_update(1 item + length) + extra_size = 290
-		let expected_used_storage = 62 + 2 * 64 + 100;
-		assert_eq!(expected_used_storage, 290);
+		// code_size + array_update(1 item + length) + extra_size = 10190
+		let expected_used_storage = 62 + 2 * 64 + 10000;
+		assert_eq!(expected_used_storage, 10190);
 		assert_eq!(
 			result,
 			CallInfo {
@@ -1920,9 +1920,9 @@ fn evm_execute_mode_should_work() {
 		)
 		.unwrap();
 
-		// 2 * code_size + array_update(2 items + length) + extra_size = 516
-		let expected_used_storage = 2 * 62 + 3 * 64 + 2 * 100;
-		assert_eq!(expected_used_storage, 516);
+		// 2 * code_size + array_update(2 items + length) + extra_size = 20316
+		let expected_used_storage = 2 * 62 + 3 * 64 + 2 * 10000;
+		assert_eq!(expected_used_storage, 20316);
 		assert_eq!(
 			result,
 			CallInfo {
@@ -1980,9 +1980,9 @@ fn evm_execute_mode_should_work() {
 		)
 		.unwrap();
 
-		// code_size + array_update(1 item + length) + extra_size = 290
-		let expected_used_storage = 62 + 2 * 64 + 100;
-		assert_eq!(expected_used_storage, 290);
+		// code_size + array_update(1 item + length) + extra_size = 10190
+		let expected_used_storage = 62 + 2 * 64 + 10000;
+		assert_eq!(expected_used_storage, 10190);
 		assert_eq!(
 			result,
 			CallInfo {
@@ -2023,9 +2023,9 @@ fn evm_execute_mode_should_work() {
 		)
 		.unwrap();
 
-		// code_size + array_update(1 item) + extra_size = 226, array_length is already set
-		let expected_used_storage = 62 + 64 + 100;
-		assert_eq!(expected_used_storage, 226);
+		// code_size + array_update(1 item) + extra_size = 10126, array_length is already set
+		let expected_used_storage = 62 + 64 + 10000;
+		assert_eq!(expected_used_storage, 10126);
 		assert_eq!(
 			result,
 			CallInfo {
@@ -2312,7 +2312,7 @@ fn auto_publish_works() {
 			code,
 			0,
 			2_100_000,
-			10000,
+			20000,
 			vec![]
 		));
 
@@ -2322,7 +2322,7 @@ fn auto_publish_works() {
 			contract: factory,
 			logs: vec![],
 			used_gas: 596931,
-			used_storage: 2620,
+			used_storage: 12520,
 		}));
 
 		// call method `createContract()`
@@ -2332,7 +2332,7 @@ fn auto_publish_works() {
 			from_hex("0x412a5a6d").unwrap(),
 			0,
 			1000000,
-			10000,
+			30000,
 			vec![],
 		));
 		System::assert_last_event(RuntimeEvent::EVM(crate::Event::Executed {
@@ -2357,7 +2357,7 @@ fn auto_publish_works() {
 				},
 			],
 			used_gas: 389159,
-			used_storage: 1537,
+			used_storage: 21337,
 		}));
 
 		assert_eq!(
@@ -2402,7 +2402,7 @@ fn auto_publish_works() {
 			from_hex("0x412a5a6d").unwrap(),
 			0,
 			1000000,
-			10000,
+			30000,
 			vec![],
 		));
 		System::assert_last_event(RuntimeEvent::EVM(crate::Event::Executed {
@@ -2427,7 +2427,7 @@ fn auto_publish_works() {
 				},
 			],
 			used_gas: 372059,
-			used_storage: 1473,
+			used_storage: 21273,
 		}));
 
 		assert_eq!(
@@ -2469,7 +2469,7 @@ fn auto_publish_works() {
 			from_hex("0x0f24df3a").unwrap(),
 			0,
 			1000000,
-			10000,
+			30000,
 			vec![],
 		));
 		System::assert_last_event(RuntimeEvent::EVM(crate::Event::Executed {
@@ -2484,7 +2484,7 @@ fn auto_publish_works() {
 				data: vec![],
 			}],
 			used_gas: 145811,
-			used_storage: 400,
+			used_storage: 10300,
 		}));
 
 		assert_eq!(

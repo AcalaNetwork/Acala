@@ -30,6 +30,8 @@ use primitives::{currency::KUSD, evm::EvmAddress, Balance, CurrencyId};
 
 use orml_traits::MultiCurrency;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 mod mock;
 mod tests;
 pub mod weights;
