@@ -54,7 +54,7 @@
 //!   fees are deposited into the Pot.
 //!
 //! Note: Eventually the Pot distribution may be modified as discussed in
-//! [this issue](https://github.com/paritytech/asset_hub_polkadot/issues/21#issuecomment-810481073).
+//! [this issue]().
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::unused_unit)]
