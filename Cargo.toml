@@ -147,7 +147,7 @@ insta = { version = "1.31.0", features = ["json"] }
 # - "client" dependencies are only used in the client, and thus don't need to be no_std compatible.
 
 # ORML & Acala (wasm)
-wasm-bencher = { git = "https://github.com/open-web3-stack/wasm-bencher", branch = "polkadot-stable2503", default-features = false }
+wasm-bencher = { git = "https://github.com/open-web3-stack/wasm-bencher", branch = "polkadot-stable2506", default-features = false }
 orml-auction = { path = "orml/auction", default-features = false }
 orml-authority = { path = "orml/authority", default-features = false }
 orml-benchmarking = { path = "orml/benchmarking", default-features = false }
