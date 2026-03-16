@@ -389,7 +389,7 @@ mod tests {
 	}
 
 	parameter_types! {
-		const FixedBasedRate: u128 = 10;
+		const FixedBaseRate: u128 = 10;
 		FixedRate: Ratio = Ratio::one();
 	}
 
@@ -487,7 +487,7 @@ mod tests {
 			);
 			assert_noop!(buy_weight, XcmError::TooExpensive);
 
-			let mut trader = <FixedRateOfAsset<FixedBasedRate, (), MockFixedBuyWeightRate<FixedRate>>>::new();
+			let mut trader = <FixedRateOfAsset<FixedBaseRate, (), MockFixedBuyWeightRate<FixedRate>>>::new();
 			let buy_weight = trader.buy_weight(
 				XcmWeight::from_parts(WEIGHT_REF_TIME_PER_SECOND, 0),
 				assets.clone().into(),
@@ -507,7 +507,7 @@ mod tests {
 			let sibling_asset: Asset = (sibling_location, 100).into();
 			let parent_assets: Assets = parent_asset.into();
 			let sibling_assets: Assets = sibling_asset.into();
-			let mut trader = <FixedRateOfAsset<FixedBasedRate, (), MockLocationAwareBuyWeightRate>>::new();
+			let mut trader = <FixedRateOfAsset<FixedBaseRate, (), MockLocationAwareBuyWeightRate>>::new();
 			let ctx = default_xcm_context();
 
 			assert_ok!(trader.buy_weight(ONE_SECOND_WEIGHT, parent_assets.into(), &ctx));
@@ -523,7 +523,7 @@ mod tests {
 		new_test_ext().execute_with(|| {
 			let parent_asset: Asset = (Parent, 100).into();
 			let parent_assets: Assets = parent_asset.into();
-			let mut trader = <FixedRateOfAsset<FixedBasedRate, (), MockLocationAwareBuyWeightRate>>::new();
+			let mut trader = <FixedRateOfAsset<FixedBaseRate, (), MockLocationAwareBuyWeightRate>>::new();
 			let ctx = default_xcm_context();
 
 			assert_ok!(trader.buy_weight(ONE_SECOND_WEIGHT, parent_assets.clone().into(), &ctx));
@@ -541,7 +541,7 @@ mod tests {
 			let sibling_asset: Asset = (sibling_location.clone(), 100).into();
 			let parent_assets: Assets = parent_asset.into();
 			let sibling_assets: Assets = sibling_asset.into();
-			let mut trader = <FixedRateOfAsset<FixedBasedRate, (), MockLocationAwareBuyWeightRate>>::new();
+			let mut trader = <FixedRateOfAsset<FixedBaseRate, (), MockLocationAwareBuyWeightRate>>::new();
 			let ctx = default_xcm_context();
 
 			assert_ok!(trader.buy_weight(ONE_SECOND_WEIGHT, parent_assets.into(), &ctx));
