@@ -162,10 +162,33 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 		log::debug!(target: "xcm::weight", "buy_weight location: {location:?}");
 
 		if let Some(ratio) = M::calculate_rate(location.clone()) {
+			// Fast path: no outstanding purchase, update state immediately
+			if self.location.is_none() || (self.amount == 0 && self.weight == XcmWeight::zero()) {
+				self.ratio = ratio;
+				self.location = Some(location.clone());
+			} else {
+				// Slow path: has outstanding purchase, reject mixed assets/rates
+				let location_changed = self.location.as_ref() != Some(location);
+				let ratio_changed = self.ratio != ratio;
+				if location_changed || ratio_changed {
+					log::trace!(
+						target: "xcm::weight",
+						"buy_weight rejected mixed asset/rate while purchase is outstanding: current_location: {:?}, current_ratio: {:?}, next_location: {:?}, next_ratio: {:?}",
+						self.location,
+						self.ratio,
+						location,
+						ratio,
+					);
+					return Err(XcmError::TooExpensive);
+				}
+			}
+
 			// The WEIGHT_REF_TIME_PER_SECOND is non-zero.
 			let weight_ratio =
 				FixedU128::saturating_from_rational(weight.ref_time() as u128, WEIGHT_REF_TIME_PER_SECOND as u128);
-			let amount = ratio.saturating_mul_int(weight_ratio.saturating_mul_int(FixedRate::get()));
+			let amount = self
+				.ratio
+				.saturating_mul_int(weight_ratio.saturating_mul_int(FixedRate::get()));
 
 			let required = Asset {
 				id: asset_id.clone(),
@@ -173,8 +196,10 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 			};
 
 			log::trace!(
-				target: "xcm::weight", "buy_weight payment: {payment:?}, required: {required:?}, fixed_rate: {:?}, ratio: {ratio:?}, weight_ratio: {weight_ratio:?}",
+				target: "xcm::weight",
+				"buy_weight payment: {payment:?}, required: {required:?}, fixed_rate: {:?}, ratio: {:?}, weight_ratio: {weight_ratio:?}",
 				FixedRate::get(),
+				self.ratio,
 			);
 			let unused = payment
 				.clone()
@@ -182,8 +207,6 @@ impl<FixedRate: Get<u128>, R: TakeRevenue, M: BuyWeightRate> WeightTrader for Fi
 				.map_err(|_| XcmError::TooExpensive)?;
 			self.weight = self.weight.saturating_add(weight);
 			self.amount = self.amount.saturating_add(amount);
-			self.ratio = ratio;
-			self.location = Some(location.clone());
 			return Ok(unused);
 		}
 
@@ -352,10 +375,33 @@ mod tests {
 		}
 	}
 
+	pub struct MockLocationAwareBuyWeightRate;
+	impl BuyWeightRate for MockLocationAwareBuyWeightRate {
+		fn calculate_rate(location: Location) -> Option<Ratio> {
+			if location == Location::parent() {
+				Some(Ratio::one())
+			} else if location == Location::new(1, [Parachain(2000u32.into())]) {
+				Some(Ratio::saturating_from_integer(2))
+			} else {
+				None
+			}
+		}
+	}
+
 	parameter_types! {
 		const FixedBasedRate: u128 = 10;
 		FixedRate: Ratio = Ratio::one();
 	}
+
+	fn default_xcm_context() -> XcmContext {
+		XcmContext {
+			origin: Some(Parent.into()),
+			message_id: XcmHash::default(),
+			topic: None,
+		}
+	}
+
+	const ONE_SECOND_WEIGHT: XcmWeight = XcmWeight::from_parts(WEIGHT_REF_TIME_PER_SECOND, 0);
 
 	#[test]
 	fn currency_id_encode_as_general_key_works() {
@@ -450,6 +496,65 @@ mod tests {
 			let asset: Asset = (Parent, 90).into();
 			let assets: Assets = asset.into();
 			assert_ok!(buy_weight, assets.clone().into());
+		});
+	}
+
+	#[test]
+	fn buy_weight_rejects_mixed_asset_while_outstanding_purchase_exists() {
+		new_test_ext().execute_with(|| {
+			let parent_asset: Asset = (Parent, 100).into();
+			let sibling_location = Location::new(1, [Parachain(2000u32.into())]);
+			let sibling_asset: Asset = (sibling_location, 100).into();
+			let parent_assets: Assets = parent_asset.into();
+			let sibling_assets: Assets = sibling_asset.into();
+			let mut trader = <FixedRateOfAsset<FixedBasedRate, (), MockLocationAwareBuyWeightRate>>::new();
+			let ctx = default_xcm_context();
+
+			assert_ok!(trader.buy_weight(ONE_SECOND_WEIGHT, parent_assets.into(), &ctx));
+			assert_noop!(
+				trader.buy_weight(ONE_SECOND_WEIGHT, sibling_assets.into(), &ctx),
+				XcmError::TooExpensive
+			);
+		});
+	}
+
+	#[test]
+	fn buy_weight_allows_same_asset_while_outstanding_purchase_exists() {
+		new_test_ext().execute_with(|| {
+			let parent_asset: Asset = (Parent, 100).into();
+			let parent_assets: Assets = parent_asset.into();
+			let mut trader = <FixedRateOfAsset<FixedBasedRate, (), MockLocationAwareBuyWeightRate>>::new();
+			let ctx = default_xcm_context();
+
+			assert_ok!(trader.buy_weight(ONE_SECOND_WEIGHT, parent_assets.clone().into(), &ctx));
+			assert_ok!(trader.buy_weight(ONE_SECOND_WEIGHT, parent_assets.into(), &ctx));
+			assert_eq!(trader.location, Some(Location::parent()));
+			assert_eq!(trader.ratio, Ratio::one());
+		});
+	}
+
+	#[test]
+	fn buy_weight_allows_asset_switch_after_full_refund() {
+		new_test_ext().execute_with(|| {
+			let parent_asset: Asset = (Parent, 100).into();
+			let sibling_location = Location::new(1, [Parachain(2000u32.into())]);
+			let sibling_asset: Asset = (sibling_location.clone(), 100).into();
+			let parent_assets: Assets = parent_asset.into();
+			let sibling_assets: Assets = sibling_asset.into();
+			let mut trader = <FixedRateOfAsset<FixedBasedRate, (), MockLocationAwareBuyWeightRate>>::new();
+			let ctx = default_xcm_context();
+
+			assert_ok!(trader.buy_weight(ONE_SECOND_WEIGHT, parent_assets.into(), &ctx));
+			assert_eq!(
+				trader.refund_weight(ONE_SECOND_WEIGHT, &ctx),
+				Some((Location::parent(), 10).into())
+			);
+			assert_eq!(trader.amount, 0);
+			assert_eq!(trader.weight, XcmWeight::zero());
+
+			assert_ok!(trader.buy_weight(ONE_SECOND_WEIGHT, sibling_assets.into(), &ctx));
+			assert_eq!(trader.location, Some(sibling_location));
+			assert_eq!(trader.ratio, Ratio::saturating_from_integer(2));
 		});
 	}
 }
