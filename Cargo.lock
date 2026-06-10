@@ -1735,9 +1735,9 @@ dependencies = [
 
 [[package]]
 name = "cumulus-pallet-xcmp-queue"
-version = "0.21.1"
+version = "0.21.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44173ef89d1a8e955ab77a2ebf155ba2ffc5a7bef45019c2edd5cec63b605c5b"
+checksum = "1842e93d9a5eb3b6bf182a0396af8a7f53c2b55d1d88511eedf3e0fa67a69d95"
 dependencies = [
  "approx",
  "bounded-collections",
@@ -2866,9 +2866,9 @@ dependencies = [
 
 [[package]]
 name = "frame-support"
-version = "41.0.1"
+version = "41.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9162e30a146eabaa72feaf67a79b32d4adbebfc0566b5544937e44786734ac7b"
+checksum = "64952f32334370e6f866288c3374591d224abe9389628dca3ff0fd3ebc5037f2"
 dependencies = [
  "aquamarine",
  "array-bytes 6.2.3",
@@ -9535,9 +9535,9 @@ dependencies = [
 
 [[package]]
 name = "sp-trie"
-version = "40.0.0"
+version = "40.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b2e157c9cf44a1a9d20f3c69322e302db70399bf3f218211387fe009dd4041c"
+checksum = "71487fba795cb599bf6d1905b55a2a548524439264e2a7405684a5d30e26a370"
 dependencies = [
  "ahash",
  "foldhash 0.1.5",
@@ -9671,9 +9671,9 @@ dependencies = [
 
 [[package]]
 name = "staging-xcm"
-version = "17.0.0"
+version = "17.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "234f7bf2ef7809870c28b5744f898f882047ff5cd88d9c838e122c861c139594"
+checksum = "14d2c487abc2b7977da6dae9e44ef219418e6964a8b5b67767bc32942284be28"
 dependencies = [
  "array-bytes 6.2.3",
  "bounded-collections",

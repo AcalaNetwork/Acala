@@ -2098,7 +2098,7 @@ pub type Executive = frame_executive::Executive<
 >;
 
 #[allow(unused_parens)]
-type Migrations = ();
+type Migrations = (cumulus_pallet_xcmp_queue::migration::v7::MigrateV6ToV7<Runtime>,);
 
 construct_runtime!(
 	pub enum Runtime {

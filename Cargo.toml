@@ -215,19 +215,19 @@ orml-build-script-utils = { path = "orml/build-script-utils" }
 
 # polkadot-sdk (wasm)
 cumulus-pallet-aura-ext = { version = "0.21.0", default-features = false }
-cumulus-pallet-parachain-system = { version = "0.21.0", default-features = false }
+cumulus-pallet-parachain-system = { version = "0.21.2", default-features = false }
 cumulus-pallet-xcm = { version = "0.20.0", default-features = false }
-cumulus-pallet-xcmp-queue = { version = "0.21.0", default-features = false }
+cumulus-pallet-xcmp-queue = { version = "0.21.2", default-features = false }
 cumulus-primitives-core = { version = "0.19.0", default-features = false }
 cumulus-primitives-parachain-inherent = { version = "0.19.0", default-features = false }
 cumulus-primitives-timestamp = { version = "0.20.0", default-features = false }
 cumulus-primitives-utility = { version = "0.21.0", default-features = false }
 cumulus-test-relay-sproof-builder = { version = "0.20.0", default-features = false }
-frame-benchmarking = { version = "41.0.0", default-features = false }
-frame-executive = { version = "41.0.0", default-features = false }
+frame-benchmarking = { version = "41.0.1", default-features = false }
+frame-executive = { version = "41.0.2", default-features = false }
 frame-metadata-hash-extension = { version = "0.9.0", default-features = false }
-frame-support = { version = "41.0.0", default-features = false }
-frame-system = { version = "41.0.0", default-features = false }
+frame-support = { version = "41.0.2", default-features = false }
+frame-system = { version = "41.0.2", default-features = false }
 frame-system-rpc-runtime-api = { version = "37.0.0", default-features = false }
 frame-try-runtime = { version = "0.47.0", default-features = false }
 pallet-aura = { version = "40.0.0", default-features = false }
@@ -256,7 +256,7 @@ pallet-transaction-payment = { version = "41.0.0", default-features = false }
 pallet-transaction-payment-rpc-runtime-api = { version = "41.0.0", default-features = false }
 pallet-treasury = { version = "40.0.0", default-features = false }
 pallet-utility = { version = "41.0.0", default-features = false }
-pallet-xcm = { version = "20.1.0", default-features = false }
+pallet-xcm = { version = "20.1.3", default-features = false }
 pallet-xcm-benchmarks = { version = "21.0.0", default-features = false }
 parachain-info = { version = "0.21.0", package = "staging-parachain-info", default-features = false }
 parachains-common = { version = "22.0.0", default-features = false }
@@ -264,7 +264,7 @@ polkadot-core-primitives = { version = "18.0.0", default-features = false }
 polkadot-parachain-primitives = { version = "17.0.0", default-features = false }
 polkadot-primitives = { version = "19.0.0", default-features = false }
 polkadot-runtime-common = { version = "20.0.0", default-features = false }
-polkadot-runtime-parachains = { version = "20.0.1", default-features = false }
+polkadot-runtime-parachains = { version = "20.0.3", default-features = false }
 sp-api = { version = "37.0.0", default-features = false }
 sp-application-crypto = { version = "41.0.0", default-features = false }
 sp-arithmetic = { version = "27.0.0", default-features = false }
@@ -292,15 +292,15 @@ sp-storage = { version = "22.0.0", default-features = false }
 sp-timestamp = { version = "37.0.0", default-features = false }
 sp-tracing = { version = "17.1.0", default-features = false }
 sp-transaction-pool = { version = "37.0.0", default-features = false }
-sp-trie = { version = "40.0.0", default-features = false }
+sp-trie = { version = "40.0.1", default-features = false }
 sp-version = { version = "40.0.0", default-features = false }
 sp-wasm-interface = { version = "22.0.0", default-features = false }
 sp-weights = { version = "32.0.0", default-features = false }
-xcm = { version = "17.0.0", package = "staging-xcm", default-features = false }
-xcm-builder = { version = "21.0.0", package = "staging-xcm-builder", default-features = false }
-xcm-executor = { version = "20.0.0", package = "staging-xcm-executor", default-features = false }
+xcm = { version = "17.0.1", package = "staging-xcm", default-features = false }
+xcm-builder = { version = "21.1.0", package = "staging-xcm-builder", default-features = false }
+xcm-executor = { version = "20.0.2", package = "staging-xcm-executor", default-features = false }
 xcm-runtime-apis = { version = "0.8.0", default-features = false }
 
 # polkadot-sdk (client)
-substrate-wasm-builder = { version = "27.0.0", features = ["metadata-hash"] }
+substrate-wasm-builder = { version = "27.0.1", features = ["metadata-hash"] }
 xcm-simulator = { version = "21.0.0" }
