@@ -15,6 +15,7 @@
 		"@polkadot/api": "16.4.8",
 		"ethereum-waffle": "4.0.10",
 		"ethers": "5.7.2",
+		"solc": "0.8.24",
 		"vitest": "^3.2.4"
 	},
 	"packageManager": "yarn@4.4.0"

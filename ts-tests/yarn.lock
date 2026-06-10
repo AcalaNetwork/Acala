@@ -6525,6 +6525,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"solc@npm:0.8.24":
+  version: 0.8.24
+  resolution: "solc@npm:0.8.24"
+  dependencies:
+    command-exists: "npm:^1.2.8"
+    commander: "npm:^8.1.0"
+    follow-redirects: "npm:^1.12.1"
+    js-sha3: "npm:0.8.0"
+    memorystream: "npm:^0.3.1"
+    semver: "npm:^5.5.0"
+    tmp: "npm:0.0.33"
+  bin:
+    solcjs: solc.js
+  checksum: 10c0/31f748be9998d9dee6a4c59aa6800a87802827766ccab2429cce2783898561658c98bad89c081a7b69510e3741668245375ab3dd73b840f15213352d5caf0a91
+  languageName: node
+  linkType: hard
+
 "sonic-boom@npm:^4.0.1":
   version: 4.0.1
   resolution: "sonic-boom@npm:4.0.1"
@@ -6947,6 +6964,7 @@ __metadata:
     "@polkadot/api": "npm:16.4.8"
     ethereum-waffle: "npm:4.0.10"
     ethers: "npm:5.7.2"
+    solc: "npm:0.8.24"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
