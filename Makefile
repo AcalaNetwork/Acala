@@ -258,6 +258,6 @@ bench-evm:
 
 .PHONY: tools
 tools:
-	cargo install staging-chain-spec-builder
+	cargo install staging-chain-spec-builder --locked
 	cargo install frame-omni-bencher
 	cargo install --git https://github.com/paritytech/try-runtime-cli --tag v0.7.0
