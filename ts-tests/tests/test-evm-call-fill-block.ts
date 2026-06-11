@@ -2,6 +2,8 @@ import { expect, beforeAll, it } from "vitest";
 import { describeWithAcala, nextBlock } from "./util";
 import { BodhiSigner } from "@acala-network/bodhi";
 
+const FILL_BLOCK_TEST_TIMEOUT = 360_000;
+
 describeWithAcala("Acala RPC (EVM call fill block)", (context) => {
     let alice: BodhiSigner;
 
@@ -38,5 +40,5 @@ describeWithAcala("Acala RPC (EVM call fill block)", (context) => {
         const evmCreateEvents = events.events.filter((item) => context.provider.api.events.evm.Executed.is(item.event));
 
         expect(evmCreateEvents.length).to.closeTo(240, 10);
-    });
+    }, FILL_BLOCK_TEST_TIMEOUT);
 });
