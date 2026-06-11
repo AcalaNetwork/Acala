@@ -1,6 +1,6 @@
 {
   "compilerType": "solcjs",
-  "compilerVersion": "0.8.24",
+  "compilerVersion": "./node_modules/solc",
   "sourceDirectory": "./contracts",
   "outputDirectory": "./build"
 }

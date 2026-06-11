@@ -144,7 +144,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: Cow::Borrowed("mandala"),
 	impl_name: Cow::Borrowed("mandala"),
 	authoring_version: 1,
-	spec_version: 2350,
+	spec_version: 2360,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 3,
@@ -2098,7 +2098,7 @@ pub type Executive = frame_executive::Executive<
 >;
 
 #[allow(unused_parens)]
-type Migrations = ();
+type Migrations = (cumulus_pallet_xcmp_queue::migration::v7::MigrateV6ToV7<Runtime>,);
 
 construct_runtime!(
 	pub enum Runtime {
