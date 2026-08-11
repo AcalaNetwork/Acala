@@ -710,11 +710,11 @@ impl pallet_tips::Config for Runtime {
 }
 
 parameter_types! {
-	pub const LaunchPeriod: BlockNumber = 5 * DAYS;
-	pub const VotingPeriod: BlockNumber = 5 * DAYS;
+	pub const LaunchPeriod: BlockNumber = 10 * DAYS;
+	pub const VotingPeriod: BlockNumber = 30 * DAYS;
 	pub const FastTrackVotingPeriod: BlockNumber = 3 * HOURS;
-	pub MinimumDeposit: Balance = 100 * dollar(KAR);
-	pub const EnactmentPeriod: BlockNumber = 2 * DAYS;
+	pub MinimumDeposit: Balance = 500_000 * dollar(KAR);
+	pub const EnactmentPeriod: BlockNumber = 30 * DAYS;
 	pub const VoteLockingPeriod: BlockNumber = 7 * DAYS;
 	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
 }
