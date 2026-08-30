@@ -124,7 +124,7 @@ type CallOf<T> = <T as Config>::RuntimeCall;
 /// congestion.
 ///
 /// More info can be found at:
-/// https://w3f-research.readthedocs.io/en/latest/polkadot/Token%20Economics.html
+/// https://research.web3.foundation/Polkadot/overview/token-economics
 pub struct TargetedFeeAdjustment<T, S, V, M, X>(sp_std::marker::PhantomData<(T, S, V, M, X)>);
 
 /// Something that can convert the current multiplier to the next one.
