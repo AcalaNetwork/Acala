@@ -43,7 +43,7 @@ This project is initiated and facilitated by the Acala Foundation. Acala Foundat
 
 ## NOTE
 
-The Acala client node is moved to [acala-node](https://github.com/AcalaNetwork/acala-node). This repo only contains the runtime code. This allow us to decouple the runtime release and client node release.
+The Acala client node is moved to [acala-node](https://github.com/AcalaNetwork/acala-node). This repo only contains the runtime code. This allows us to decouple the runtime release and client node release.
 
 If you would like to build the client node, please refer to [acala-node](https://github.com/AcalaNetwork/acala-node).
 
@@ -53,7 +53,7 @@ Install Rust:
 curl https://sh.rustup.rs -sSf | sh
 ```
 
-You may need additional dependencies, checkout [substrate.io](https://docs.substrate.io/v3/getting-started/installation) for more info
+You may need additional dependencies, check out [substrate.io](https://docs.substrate.io/v3/getting-started/installation) for more info
 
 ```bash
 sudo apt-get install -y git clang curl make libssl-dev llvm libudev-dev protobuf-compiler
@@ -140,11 +140,11 @@ try-runtime on karura
 
 ```bash
 # Use a live chain to run the migration test.
-# Add `-p module_name` can specify the module.
+# Add `-p module_name` to specify the module.
 make try-runtime-karura
 
 # Create a state snapshot to run the migration test.
-# Add `--pallet module_name` can specify the module.
+# Add `--pallet module_name` to specify the module.
 cargo run --features with-karura-runtime --features try-runtime -- try-runtime --runtime existing create-snapshot --uri wss://karura.api.onfinality.io:443/public-ws karura-latest.snap
 
 # Use a state snapshot to run the migration test.
@@ -155,11 +155,11 @@ try-runtime on acala
 
 ```bash
 # Use a live chain to run the migration test.
-# Add `--pallet module_name` can specify the module.
+# Add `--pallet module_name` to specify the module.
 make try-runtime-acala
 
 # Create a state snapshot to run the migration test.
-# Add `-palet module_name` can specify the module.
+# Add `--pallet module_name` to specify the module.
 cargo run --features with-acala-runtime --features try-runtime -- try-runtime --runtime existing create-snapshot --uri wss://acala.api.onfinality.io:443/public-ws acala-latest.snap
 
 # Use a state snapshot to run the migration test.
